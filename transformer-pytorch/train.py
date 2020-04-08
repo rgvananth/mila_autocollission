@@ -28,9 +28,14 @@ def train_model(model, opt):
 
         for i, batch in enumerate(opt.train):
 
-            src = batch.src.transpose(0, 1)
-            trg = batch.trg.transpose(0, 1)
-            trg_input = trg[:, :-1]
+            if opt.device == 0:
+                src = batch.src.transpose(0, 1).cuda()
+                trg = batch.trg.transpose(0, 1).cuda()
+                trg_input = trg[:, :-1].cuda()
+            else:
+                src = batch.src.transpose(0, 1)
+                trg = batch.trg.transpose(0, 1)
+                trg_input = trg[:, :-1]
             src_mask, trg_mask = create_masks(src, trg_input, opt)
             preds = model(src, trg_input, src_mask, trg_mask)
             ys = trg[:, 1:].contiguous().view(-1)
@@ -71,7 +76,7 @@ def main():
     parser.add_argument('-trg_data', required=True)
     parser.add_argument('-src_lang', required=True)
     parser.add_argument('-trg_lang', required=True)
-    parser.add_argument('-no_cuda', action='store_false')
+    parser.add_argument('-no_cuda', action='store_true')
     parser.add_argument('-SGDR', action='store_true')
     parser.add_argument('-epochs', type=int, default=2)
     parser.add_argument('-d_model', type=int, default=512)
@@ -110,6 +115,9 @@ def main():
         os.mkdir('weights')
         pickle.dump(SRC, open('weights/SRC.pkl', 'wb'))
         pickle.dump(TRG, open('weights/TRG.pkl', 'wb'))
+
+    if opt.device == 0:
+        model = model.to('cuda:0')
 
     train_model(model, opt)
 
